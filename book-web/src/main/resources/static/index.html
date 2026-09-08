@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图书管理系统</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; max-width: 700px; margin: 40px auto; }
+        input { padding: 6px; margin-right: 8px; }
+        button { padding: 6px 14px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        .del { color: red; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>📚 图书管理系统</h1>
+
+    <h3>添加图书</h3>
+    <input id="uid" type="number" placeholder="编号">
+    <input id="name" type="text" placeholder="书名">
+    <button onclick="addBook()">添加</button>
+
+    <h3>查找图书</h3>
+    <input id="kw" type="text" placeholder="按书名查找">
+    <button onclick="searchBook()">查找</button>
+    <button onclick="loadBooks()">显示全部</button>
+
+    <table>
+        <thead><tr><th>编号</th><th>书名</th><th>操作</th></tr></thead>
+        <tbody id="tbody"></tbody>
+    </table>
+
+    <script>
+        // ① 加载列表：GET /books
+        async function loadBooks() {
+            const res = await fetch('/books');
+            const books = await res.json();
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = '';
+            books.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + b.uid + '</td><td>' + b.name + '</td>' +
+                    '<td class="del" onclick="deleteBook(' + b.uid + ')">删除</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ② 添加图书：POST /books（JSON body）
+        async function addBook() {
+            const uid = document.getElementById('uid').value;
+            const name = document.getElementById('name').value;
+            if (!uid || !name) { alert('编号和书名都要填'); return; }
+            const res = await fetch('/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: Number(uid), name: name })
+            });
+            if (res.ok) {
+                alert('添加成功');
+                loadBooks();
+            } else {
+                alert('添加失败，可能编号已存在');
+            }
+        }
+
+        // ③ 删除图书：DELETE /books/{uid}
+        async function deleteBook(uid) {
+            if (!confirm('确定删除编号 ' + uid + ' 的书？')) return;
+            const res = await fetch('/books/' + uid, { method: 'DELETE' });
+            if (res.ok) alert('删除成功');
+            loadBooks();
+        }
+
+        // ④ 按书名查找：GET /books/find?name=xxx
+        async function searchBook() {
+            const kw = document.getElementById('kw').value;
+            if (!kw) return;
+            const res = await fetch('/books/find?name=' + encodeURIComponent(kw));
+            const book = await res.json();
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + book.uid + '</td><td>' + book.name + '</td>' +
+                '<td class="del" onclick="deleteBook(' + book.uid + ')">删除</td>';
+            tbody.appendChild(tr);
+        }
+
+        loadBooks();   // 页面打开自动加载列表
+    </script>
+</body>
+</html>
